@@ -1,6 +1,7 @@
 # Author: Dimo Angelov
 #
 # License: BSD 3 clause
+from ast import Continue
 import logging
 import numpy as np
 import pandas as pd
@@ -368,6 +369,7 @@ class Top2Vec:
 
     def __init__(self,
                  documents,
+                 pre_embedded=False,
                  min_count=50,
                  ngram_vocab=False,
                  ngram_vocab_args=None,
@@ -402,6 +404,10 @@ class Top2Vec:
 
         if tokenizer is None:
             tokenizer = default_tokenizer
+        
+        ## Pass embeddings:
+        if pre_embedded == True:
+            self.document_vectors = self.documents
 
         # validate documents
         if not (isinstance(documents, list) or isinstance(documents, np.ndarray)):
@@ -466,7 +472,9 @@ class Top2Vec:
             else:
                 raise ValueError(f"{sentencizer} is invalid. Document sentencizer must be callable.")
 
-        if embedding_model == 'doc2vec':
+        if pre_embedded == True:
+            Continue
+        elif embedding_model == 'doc2vec':
 
             # validate training inputs
             if speed == "fast-learn":

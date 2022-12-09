@@ -411,7 +411,7 @@ class Top2Vec:
         # validate documents
         if not (isinstance(documents, list) or isinstance(documents, np.ndarray)):
             raise ValueError("Documents need to be a list of strings")
-        if not all((isinstance(doc, str) or isinstance(doc, np.str_) or isinstance(doc, int) or isinstance(doc, np.int_) or isinstance(doc, float)or isinstance(doc, np.float_)) for doc in documents):
+        if not ((isinstance(doc, str) or isinstance(doc, np.str_) or isinstance(doc, int) or isinstance(doc, np.int_) or isinstance(doc, float)or isinstance(doc, np.float_)) for doc in documents):
             raise ValueError("Documents need to be a list of strings")
         if keep_documents:
             self.documents = np.array(documents, dtype="object")

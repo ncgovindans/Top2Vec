@@ -370,6 +370,7 @@ class Top2Vec:
     def __init__(self,
                  documents,
                  pre_embedded=False,
+                 pre_embedded_model_filepath="",
                  min_count=50,
                  ngram_vocab=False,
                  ngram_vocab_args=None,
@@ -475,7 +476,41 @@ class Top2Vec:
                 raise ValueError(f"{sentencizer} is invalid. Document sentencizer must be callable.")
 
         if pre_embedded == True:
-            Continue
+
+            self.model = Doc2Vec.load(pre_embedded_model_filepath)
+            self.word_vectors = self.model.wv.get_normed_vectors()
+            self.word_indexes = self.model.wv.key_to_index
+            self.vocab = list(self.model.wv.key_to_index.keys())
+            self.document_vectors = self.model.dv.get_normed_vectors()
+
+            if ngram_vocab:
+                tokenized_corpus = [tokenizer(doc) for doc in documents]
+
+                if ngram_vocab_args is None:
+                    ngram_vocab_args = {'sentences': tokenized_corpus,
+                                        'min_count': 5,
+                                        'threshold': 10.0,
+                                        'delimiter': ' '}
+                else:
+                    ngram_vocab_args['sentences'] = tokenized_corpus
+                    ngram_vocab_args['delimiter'] = ' '
+
+                phrase_model = Phrases(**ngram_vocab_args)
+                phrase_results = phrase_model.find_phrases(tokenized_corpus)
+                phrases = list(phrase_results.keys())
+
+                phrases_processed = [tokenizer(phrase) for phrase in phrases]
+                phrase_vectors = np.vstack([self.model.infer_vector(doc_words=phrase,
+                                                                    alpha=0.025,
+                                                                    min_alpha=0.01,
+                                                                    epochs=100) for phrase in phrases_processed])
+                phrase_vectors = self._l2_normalize(phrase_vectors)
+
+                self.word_vectors = np.vstack([self.word_vectors, phrase_vectors])
+                self.vocab = self.vocab + phrases
+                self.word_indexes = dict(zip(self.vocab, range(len(self.vocab))))
+
+
         elif embedding_model == 'doc2vec':
 
             # validate training inputs
@@ -985,6 +1020,7 @@ class Top2Vec:
         topic_word_scores = []
 
         res = np.inner(topic_vectors, self.word_vectors)
+
         top_words = np.flip(np.argsort(res, axis=1), axis=1)
         top_scores = np.flip(np.sort(res, axis=1), axis=1)
 

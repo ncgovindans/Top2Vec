@@ -701,8 +701,8 @@ class Top2Vec:
                             train_corpus = [' '.join(tokens) for tokens in tokenized_corpus]
                             self.document_vectors = self._embed_documents(train_corpus, embedding_batch_size)
 
-            else:
-                raise ValueError(f"{embedding_model} is an invalid embedding model.")
+        else:
+            raise ValueError(f"{embedding_model} is an invalid embedding model.")
 
         # create 5D embeddings of documents
         logger.info('Creating lower dimension embedding of documents')

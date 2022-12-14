@@ -375,7 +375,7 @@ class Top2Vec:
                  min_count=50,
                  ngram_vocab=False,
                  ngram_vocab_args=None,
-                 embedding_model='doc2vec',
+                 embedding_model='stsb-mpnet-base-v2',
                  embedding_model_path=None,
                  embedding_batch_size=32,
                  split_documents=False,
@@ -475,7 +475,7 @@ class Top2Vec:
                 use_sentencizer = True
             else:
                 raise ValueError(f"{sentencizer} is invalid. Document sentencizer must be callable.")
-
+        print(embedding_model)
         if (pre_embedded==True and embedding_model=='doc2vec'):
 
             self.model = Doc2Vec.load(pre_embedded_model_filepath)
@@ -616,92 +616,93 @@ class Top2Vec:
             logger.info('Pre-processing documents for training')
 
             # preprocess documents
-            tokenized_corpus = [tokenizer(doc) for doc in documents]
+            if pre_embedded ==False:
+                tokenized_corpus = [tokenizer(doc) for doc in documents]
 
-            def return_doc(doc):
-                return doc
+                def return_doc(doc):
+                    return doc
 
-            # preprocess vocabulary
-            vectorizer = CountVectorizer(tokenizer=return_doc, preprocessor=return_doc)
-            doc_word_counts = vectorizer.fit_transform(tokenized_corpus)
-            words = vectorizer.get_feature_names()
-            word_counts = np.array(np.sum(doc_word_counts, axis=0).tolist()[0])
-            vocab_inds = np.where(word_counts > min_count)[0]
+                # preprocess vocabulary
+                vectorizer = CountVectorizer(tokenizer=return_doc, preprocessor=return_doc)
+                doc_word_counts = vectorizer.fit_transform(tokenized_corpus)
+                words = vectorizer.get_feature_names()
+                word_counts = np.array(np.sum(doc_word_counts, axis=0).tolist()[0])
+                vocab_inds = np.where(word_counts > min_count)[0]
 
-            if len(vocab_inds) == 0:
-                raise ValueError(f"A min_count of {min_count} results in "
-                                 f"all words being ignored, choose a lower value.")
-            self.vocab = [words[ind] for ind in vocab_inds]
+                if len(vocab_inds) == 0:
+                    raise ValueError(f"A min_count of {min_count} results in "
+                                    f"all words being ignored, choose a lower value.")
+                self.vocab = [words[ind] for ind in vocab_inds]
 
-            if ngram_vocab:
-                if ngram_vocab_args is None:
-                    ngram_vocab_args = {'sentences': tokenized_corpus,
-                                        'min_count': 5,
-                                        'threshold': 10.0,
-                                        'delimiter': ' '}
-                else:
-                    ngram_vocab_args['sentences'] = tokenized_corpus
-                    ngram_vocab_args['delimiter'] = ' '
-
-                phrase_model = Phrases(**ngram_vocab_args)
-                phrase_results = phrase_model.find_phrases(tokenized_corpus)
-                phrases = list(phrase_results.keys())
-
-                self.vocab = self.vocab + phrases
-
-            self._check_model_status()
-            if (pre_embedded == False):
-                logger.info('Creating joint document/word embedding')
-
-                # embed words
-                self.word_indexes = dict(zip(self.vocab, range(len(self.vocab))))
-                self.word_vectors = self._l2_normalize(np.array(self.embed(self.vocab)))
-
-                # embed documents
-
-                # split documents
-                if split_documents:
-                    if use_sentencizer:
-                        chunk_id = 0
-                        chunked_docs = []
-                        chunked_doc_ids = []
-                        for doc in documents:
-                            doc_chunks = sentencizer(doc)
-                            doc_chunk_ids = [chunk_id] * len(doc_chunks)
-                            chunk_id += 1
-                            chunked_docs.extend(doc_chunks)
-                            chunked_doc_ids.extend(doc_chunk_ids)
-
+                if ngram_vocab:
+                    if ngram_vocab_args is None:
+                        ngram_vocab_args = {'sentences': tokenized_corpus,
+                                            'min_count': 5,
+                                            'threshold': 10.0,
+                                            'delimiter': ' '}
                     else:
-                        chunk_id = 0
-                        chunked_docs = []
-                        chunked_doc_ids = []
-                        for tokens in tokenized_corpus:
-                            if custom_chunker:
-                                doc_chunks = document_chunker(tokens)
-                            else:
-                                doc_chunks = document_chunker(tokens, **document_chunker_args)
-                            doc_chunk_ids = [chunk_id] * len(doc_chunks)
-                            chunk_id += 1
-                            chunked_docs.extend(doc_chunks)
-                            chunked_doc_ids.extend(doc_chunk_ids)
+                        ngram_vocab_args['sentences'] = tokenized_corpus
+                        ngram_vocab_args['delimiter'] = ' '
 
-                    chunked_doc_ids = np.array(chunked_doc_ids)
-                    document_chunk_vectors = self._embed_documents(chunked_docs, embedding_batch_size)
-                    self.document_vectors = self._l2_normalize(
-                        np.vstack([document_chunk_vectors[np.where(chunked_doc_ids == label)[0]]
-                                .mean(axis=0) for label in set(chunked_doc_ids)]))
+                    phrase_model = Phrases(**ngram_vocab_args)
+                    phrase_results = phrase_model.find_phrases(tokenized_corpus)
+                    phrases = list(phrase_results.keys())
 
-                # original documents
-                else:
-                    if use_embedding_model_tokenizer:
-                        self.document_vectors = self._embed_documents(documents, embedding_batch_size)
+                    self.vocab = self.vocab + phrases
+
+                self._check_model_status()
+                if (pre_embedded == False):
+                    logger.info('Creating joint document/word embedding')
+
+                    # embed words
+                    self.word_indexes = dict(zip(self.vocab, range(len(self.vocab))))
+                    self.word_vectors = self._l2_normalize(np.array(self.embed(self.vocab)))
+
+                    # embed documents
+
+                    # split documents
+                    if split_documents:
+                        if use_sentencizer:
+                            chunk_id = 0
+                            chunked_docs = []
+                            chunked_doc_ids = []
+                            for doc in documents:
+                                doc_chunks = sentencizer(doc)
+                                doc_chunk_ids = [chunk_id] * len(doc_chunks)
+                                chunk_id += 1
+                                chunked_docs.extend(doc_chunks)
+                                chunked_doc_ids.extend(doc_chunk_ids)
+
+                        else:
+                            chunk_id = 0
+                            chunked_docs = []
+                            chunked_doc_ids = []
+                            for tokens in tokenized_corpus:
+                                if custom_chunker:
+                                    doc_chunks = document_chunker(tokens)
+                                else:
+                                    doc_chunks = document_chunker(tokens, **document_chunker_args)
+                                doc_chunk_ids = [chunk_id] * len(doc_chunks)
+                                chunk_id += 1
+                                chunked_docs.extend(doc_chunks)
+                                chunked_doc_ids.extend(doc_chunk_ids)
+
+                        chunked_doc_ids = np.array(chunked_doc_ids)
+                        document_chunk_vectors = self._embed_documents(chunked_docs, embedding_batch_size)
+                        self.document_vectors = self._l2_normalize(
+                            np.vstack([document_chunk_vectors[np.where(chunked_doc_ids == label)[0]]
+                                    .mean(axis=0) for label in set(chunked_doc_ids)]))
+
+                    # original documents
                     else:
-                        train_corpus = [' '.join(tokens) for tokens in tokenized_corpus]
-                        self.document_vectors = self._embed_documents(train_corpus, embedding_batch_size)
+                        if use_embedding_model_tokenizer:
+                            self.document_vectors = self._embed_documents(documents, embedding_batch_size)
+                        else:
+                            train_corpus = [' '.join(tokens) for tokens in tokenized_corpus]
+                            self.document_vectors = self._embed_documents(train_corpus, embedding_batch_size)
 
-        else:
-            raise ValueError(f"{embedding_model} is an invalid embedding model.")
+            else:
+                raise ValueError(f"{embedding_model} is an invalid embedding model.")
 
         # create 5D embeddings of documents
         logger.info('Creating lower dimension embedding of documents')

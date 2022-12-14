@@ -476,7 +476,7 @@ class Top2Vec:
             else:
                 raise ValueError(f"{sentencizer} is invalid. Document sentencizer must be callable.")
 
-        if (pre_embedded == True and embedding_model == 'doc2vec'):
+        if (pre_embedded==True and embedding_model=='doc2vec'):
 
             self.model = Doc2Vec.load(pre_embedded_model_filepath)
             self.word_vectors = self.model.wv.get_normed_vectors()

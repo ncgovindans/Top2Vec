@@ -64,6 +64,7 @@ use_model_urls = {
 
 sbert_models = ["distiluse-base-multilingual-cased",
                 "all-MiniLM-L6-v2",
+                "stsb-mpnet-base-v2",
                 "paraphrase-multilingual-MiniLM-L12-v2"]
 
 acceptable_embedding_models = use_models + sbert_models

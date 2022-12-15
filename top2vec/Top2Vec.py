@@ -371,7 +371,7 @@ class Top2Vec:
     def __init__(self,
                  documents,
                  pre_embedded=False,
-                 pre_embedded_vectors=np.array(),
+                 pre_embedded_vectors=np.array([]),
                  pre_embedded_model_filepath="",
                  min_count=50,
                  ngram_vocab=False,

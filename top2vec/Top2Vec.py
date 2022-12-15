@@ -371,7 +371,7 @@ class Top2Vec:
     def __init__(self,
                  documents,
                  pre_embedded=False,
-                 pre_embedded_vectors=[],
+                 pre_embedded_vectors=np.array(),
                  pre_embedded_model_filepath="",
                  min_count=50,
                  ngram_vocab=False,
@@ -618,7 +618,8 @@ class Top2Vec:
 
             # preprocess documents
             tokenized_corpus = [tokenizer(doc) for doc in documents]
-
+            print("TESTING")
+            print(len(tokenized_corpus))
             def return_doc(doc):
                 return doc
 

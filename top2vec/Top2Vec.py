@@ -371,6 +371,7 @@ class Top2Vec:
     def __init__(self,
                  documents,
                  pre_embedded=False,
+                 pre_embedded_vectors=[],
                  pre_embedded_model_filepath="",
                  min_count=50,
                  ngram_vocab=False,
@@ -421,7 +422,7 @@ class Top2Vec:
             self.documents = None
 
         if pre_embedded == True:
-            self.document_vectors = self.documents
+            self.document_vectors = self.pre_embedded_vectors
 
         # validate document ids
         if document_ids is not None:
@@ -616,48 +617,47 @@ class Top2Vec:
             logger.info('Pre-processing documents for training')
 
             # preprocess documents
-            if pre_embedded ==False:
-                tokenized_corpus = [tokenizer(doc) for doc in documents]
+            tokenized_corpus = [tokenizer(doc) for doc in documents]
 
-                def return_doc(doc):
-                    return doc
+            def return_doc(doc):
+                return doc
 
-                # preprocess vocabulary
-                vectorizer = CountVectorizer(tokenizer=return_doc, preprocessor=return_doc)
-                doc_word_counts = vectorizer.fit_transform(tokenized_corpus)
-                words = vectorizer.get_feature_names_out()
-                word_counts = np.array(np.sum(doc_word_counts, axis=0).tolist()[0])
-                vocab_inds = np.where(word_counts > min_count)[0]
+            # preprocess vocabulary
+            vectorizer = CountVectorizer(tokenizer=return_doc, preprocessor=return_doc)
+            doc_word_counts = vectorizer.fit_transform(tokenized_corpus)
+            words = vectorizer.get_feature_names_out()
+            word_counts = np.array(np.sum(doc_word_counts, axis=0).tolist()[0])
+            vocab_inds = np.where(word_counts > min_count)[0]
 
-                if len(vocab_inds) == 0:
-                    raise ValueError(f"A min_count of {min_count} results in "
-                                    f"all words being ignored, choose a lower value.")
-                self.vocab = [words[ind] for ind in vocab_inds]
+            if len(vocab_inds) == 0:
+                raise ValueError(f"A min_count of {min_count} results in "
+                                f"all words being ignored, choose a lower value.")
+            self.vocab = [words[ind] for ind in vocab_inds]
 
-                if ngram_vocab:
-                    if ngram_vocab_args is None:
-                        ngram_vocab_args = {'sentences': tokenized_corpus,
-                                            'min_count': 5,
-                                            'threshold': 10.0,
-                                            'delimiter': ' '}
-                    else:
-                        ngram_vocab_args['sentences'] = tokenized_corpus
-                        ngram_vocab_args['delimiter'] = ' '
+            if ngram_vocab:
+                if ngram_vocab_args is None:
+                    ngram_vocab_args = {'sentences': tokenized_corpus,
+                                        'min_count': 5,
+                                        'threshold': 10.0,
+                                        'delimiter': ' '}
+                else:
+                    ngram_vocab_args['sentences'] = tokenized_corpus
+                    ngram_vocab_args['delimiter'] = ' '
 
-                    phrase_model = Phrases(**ngram_vocab_args)
-                    phrase_results = phrase_model.find_phrases(tokenized_corpus)
-                    phrases = list(phrase_results.keys())
+                phrase_model = Phrases(**ngram_vocab_args)
+                phrase_results = phrase_model.find_phrases(tokenized_corpus)
+                phrases = list(phrase_results.keys())
 
-                    self.vocab = self.vocab + phrases
+                self.vocab = self.vocab + phrases
 
                 self._check_model_status()
+
+                logger.info('Creating joint document/word embedding')
+
+                # embed words
+                self.word_indexes = dict(zip(self.vocab, range(len(self.vocab))))
+                self.word_vectors = self._l2_normalize(np.array(self.embed(self.vocab)))
                 if (pre_embedded == False):
-                    logger.info('Creating joint document/word embedding')
-
-                    # embed words
-                    self.word_indexes = dict(zip(self.vocab, range(len(self.vocab))))
-                    self.word_vectors = self._l2_normalize(np.array(self.embed(self.vocab)))
-
                     # embed documents
 
                     # split documents

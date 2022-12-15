@@ -422,7 +422,7 @@ class Top2Vec:
             self.documents = None
 
         if pre_embedded == True:
-            self.document_vectors = self.pre_embedded_vectors
+            self.document_vectors = pre_embedded_vectors
 
         # validate document ids
         if document_ids is not None:
